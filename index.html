@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  	
+		<link rel="manifest" href="manifest.json">
+		<meta name="theme-color" content="#1e1e2e">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Smart Inventory</title>
+    <style>
+        /* =========================================
+           CSS VARIABLES & ULTRA COMPACT RESET 
+           ========================================= */
+        :root {
+            --primary: #4338ca;
+            --primary-hover: #3730a3;
+            --primary-light: #e0e7ff;
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --border: #cbd5e1;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --radius-pill: 999px;
+            --radius-card: 10px;
+            --radius-sm: 6px;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.12);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; user-select: none; }
+        body { background-color: var(--bg-color); color: var(--text-main); font-size: 11px; -webkit-font-smoothing: antialiased; line-height: 1.3; overflow-x: hidden; }
+        
+        /* Allow text selection in inputs */
+        input, textarea { user-select: text; }
+
+        /* =========================================
+           FULL WIDTH & HIGH DENSITY DASHBOARD
+           ========================================= */
+        .app-container { width: 100%; padding: 6px; max-width: 1600px; margin: 0 auto; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        .header { background: var(--card-bg); padding: 8px 12px; border-radius: var(--radius-pill); box-shadow: var(--shadow-sm); display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 1px solid var(--border); flex-shrink: 0; margin-bottom: 8px; }
+        .logo { font-size: 14px; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 4px; letter-spacing: -0.5px; }
+        
+        .nav-tabs { display: flex; gap: 4px; flex-wrap: nowrap; }
+        .tab-btn { background: var(--bg-color); border: 1px solid transparent; padding: 6px 12px; border-radius: var(--radius-pill); cursor: pointer; font-size: 10px; font-weight: 800; color: var(--text-muted); transition: 0.2s; display: flex; align-items: center; gap: 4px; }
+        .tab-btn:hover { background: #e2e8f0; color: var(--text-main); }
+        .tab-btn.active { background: var(--primary); color: white; box-shadow: 0 2px 8px rgba(67, 56, 202, 0.3); }
+
+        .main-content { flex: 1; overflow-y: auto; scrollbar-width: thin; padding-bottom: 40px; }
+        .section { display: none; animation: fadeIn 0.2s ease; }
+        .section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* =========================================
+           DASHBOARD CARDS & INPUTS
+           ========================================= */
+        .grid-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px; }
+        .card { background: var(--card-bg); border-radius: var(--radius-card); padding: 10px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); margin-bottom: 8px; }
+        
+        .card-header { font-size: 12px; font-weight: 800; margin-bottom: 8px; color: var(--primary); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--primary-light); padding-bottom: 6px;}
+        
+        .row-inputs { display: flex; gap: 6px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 6px; }
+        .form-group { flex: 1; min-width: 120px; margin-bottom: 6px; position: relative;}
+        .form-group label { display: block; font-size: 9px; font-weight: 800; color: var(--text-muted); margin-bottom: 4px; letter-spacing: 0.3px; text-transform: uppercase; }
+        
+        .form-control { width: 100%; padding: 0 12px; height: 32px; border-radius: var(--radius-pill); border: 1px solid var(--border); font-size: 11px; outline: none; background: #f8fafc; transition: 0.2s; font-weight: 700; color: var(--text-main); }
+        .form-control:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 2px var(--primary-light); }
+        textarea.form-control { padding: 8px 12px; resize: vertical; min-height: 50px; border-radius: var(--radius-sm); }
+        
+        /* AutoComplete Dropdown */
+        .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: var(--shadow); display: none; margin-top: 4px; }
+        .autocomplete-item { padding: 8px 12px; font-size: 11px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 2px; }
+        .autocomplete-item:hover { background: var(--primary-light); }
+        .ac-title { font-weight: 800; color: var(--text-main); }
+        .ac-code { font-size: 9px; color: var(--primary); font-weight: 700; }
+        
+        .btn { padding: 0 14px; height: 32px; border-radius: var(--radius-pill); border: none; font-size: 11px; font-weight: 800; cursor: pointer; transition: 0.2s; text-align: center; display: inline-flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap; }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 2px 6px rgba(67, 56, 202, 0.2); }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(67, 56, 202, 0.3); }
+        .btn-outline { background: white; border: 1px solid var(--primary); color: var(--primary); }
+        .btn-outline:hover { background: var(--primary-light); }
+        .btn-danger { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger); }
+        .btn-danger:hover { background: #fee2e2; }
+        .btn-small { height: 26px; font-size: 9px; padding: 0 8px; }
+        .w-full { width: 100%; }
+
+        /* =========================================
+           SEARCH, FOLDERS & RESULT CARDS
+           ========================================= */
+        .search-box { position: relative; margin-bottom: 10px; }
+        .search-input { width: 100%; padding: 0 16px 0 36px; height: 38px; font-size: 12px; border-radius: var(--radius-pill); border: 2px solid var(--primary-light); outline: none; box-shadow: var(--shadow-sm); font-weight: 800; background: white; transition: 0.2s; }
+        .search-input:focus { border-color: var(--primary); box-shadow: 0 2px 10px var(--primary-light); }
+        .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--primary); }
+
+        .breadcrumb { display: flex; align-items: center; gap: 4px; padding: 8px 12px; background: white; border-radius: var(--radius-pill); border: 1px solid var(--border); margin-bottom: 10px; font-size: 10px; font-weight: 800; color: var(--text-muted); overflow-x: auto; white-space: nowrap; box-shadow: var(--shadow-sm); }
+        .breadcrumb span { cursor: pointer; color: var(--text-main); display: flex; align-items: center; gap: 2px; padding: 2px 8px; border-radius: var(--radius-pill); transition: 0.2s; }
+        .breadcrumb span:hover { background: var(--primary-light); color: var(--primary); }
+        .breadcrumb span.active { color: var(--primary); cursor: default; background: transparent; }
+
+        .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+        .folder-card { background: white; border-radius: var(--radius-card); padding: 14px 10px; border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; box-shadow: var(--shadow-sm); text-align: center; position: relative; }
+        .folder-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); border-color: var(--primary); background: var(--primary-light); }
+        .folder-icon { font-size: 32px; margin-bottom: 6px; }
+        .folder-name { font-size: 11px; font-weight: 800; color: var(--text-main); line-height: 1.1; word-break: break-word; }
+        .folder-stats { font-size: 9px; color: var(--primary); font-weight: 800; margin-top: 6px; background: white; padding: 2px 8px; border-radius: var(--radius-pill); border: 1px solid var(--primary-light); }
+
+        /* Compact Result Cards */
+        .result-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+        .result-card { background: white; border-radius: var(--radius-card); padding: 10px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; box-shadow: var(--shadow-sm); cursor: pointer; transition: 0.2s; position: relative; overflow: hidden; }
+        .result-card:hover { border-color: var(--primary); box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+        
+        
+        .r-header-wrap { display: flex; gap: 8px; align-items: flex-start; }
+        .r-thumb { width: 36px; height: 36px; border-radius: var(--radius-sm); background: var(--primary-light); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 16px; font-weight: 900; flex-shrink: 0; border: 1px solid rgba(67, 56, 202, 0.2); }
+        
+        .r-details { display: flex; flex-direction: column; flex: 1; gap: 4px; overflow: hidden; }
+        .r-name { font-size: 12px; font-weight: 900; color: var(--text-main); line-height: 1.2; word-break: break-word; }
+        .code-badge { display: inline-block; background: #1e293b; color: white; padding: 2px 6px; border-radius: var(--radius-sm); font-size: 9px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 2px;}
+        
+        .badge-container { display: flex; flex-wrap: wrap; gap: 4px; }
+        .badge-pill { font-size: 9px; font-weight: 800; color: var(--primary); background: var(--primary-light); padding: 2px 6px; border-radius: var(--radius-pill); display: inline-flex; align-items: center; gap: 2px; border: 1px solid rgba(67, 56, 202, 0.2);}
+        
+        .product-meta { display: flex; gap: 8px; font-size: 9px; font-weight: 700; color: var(--text-muted); background: #f8fafc; padding: 6px; border-radius: var(--radius-sm); border: 1px dashed var(--border); margin-top: 2px; flex-wrap: wrap;}
+        .meta-item { display: flex; align-items: center; gap: 3px; }
+        .meta-item strong { color: var(--text-main); }
+        
+        .r-note { font-size: 10px; color: var(--warning); font-weight: 700; margin-top: 2px; }
+
+        /* =========================================
+           RACK/GRID VISUALIZER
+           ========================================= */
+        .visualizer-card { background: white; border-radius: var(--radius-card); padding: 10px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); animation: fadeIn 0.2s; }
+        .wall-info-badge { text-align: center; font-size: 9px; color: var(--text-muted); font-weight: 800; margin-bottom: 6px; text-transform: uppercase; }
+        .wall-wrapper { background: #f8fafc; padding: 10px; border-radius: var(--radius-sm); border: 2px solid var(--border); overflow: auto; max-height: 60vh; position: relative;}
+        .slot-grid { display: grid; gap: 6px; margin: 0 auto; width: max-content; padding: 8px; background: #e2e8f0; border-radius: var(--radius-sm); box-shadow: inset 0 2px 8px rgba(0,0,0,0.1); }
+        
+        .slot { background: #ffffff; border-radius: var(--radius-sm); min-width: 50px; min-height: 60px; display: flex; flex-direction: column; align-items: center; position: relative; cursor: pointer; padding: 18px 2px 4px 2px; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05), inset 0 -3px 0 #f1f5f9; border: 1px solid var(--border); }
+        .slot:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1), inset 0 -3px 0 var(--border); }
+        .slot.has-items { background: #eff6ff; border-color: #bfdbfe; inset 0 -3px 0 #dbeafe; }
+        .slot.selected { box-shadow: 0 0 0 2px var(--primary), inset 0 -3px 0 var(--primary-light); z-index: 2; background: #e0e7ff; }
+        .slot.search-blink { animation: slotBlink 1.5s infinite; z-index: 5; }
+        .slot.search-blink::after { content: ''; position: absolute; top: -4px; right: -4px; width: 12px; height: 12px; background-color: var(--success); border-radius: 50%; border: 2px solid white; box-shadow: 0 0 8px var(--success); animation: pulseDot 1s infinite; }
+        
+        .slot-label { font-size: 8px; color: var(--text-main); position: absolute; top: 4px; left: 4px; font-weight: 900; background: var(--bg-color); padding: 1px 4px; border-radius: var(--radius-pill); border: 1px solid var(--border); }
+        
+        .slot-imgs-container { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; align-items: center; width: 100%; height: 100%; }
+        .slot-text-mini { font-size: 10px; font-weight: 900; color: white; background: var(--primary); width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; box-shadow: var(--shadow-sm); border: 1px solid white;}
+
+        @keyframes slotBlink { 0%, 100% { box-shadow: 0 0 0 3px var(--success); background-color: #ecfdf5; border-color: var(--success); } 50% { box-shadow: 0 2px 4px rgba(0,0,0,0.05); background-color: #ffffff; border-color: var(--border); } }
+        @keyframes pulseDot { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.6); opacity: 0.6; } }
+
+        .slot-viewer { display: none; background: white; border-radius: var(--radius-card); padding: 10px; margin-top: 10px; border: 2px solid var(--primary); box-shadow: var(--shadow-hover); animation: fadeIn 0.2s; position: relative; }
+        .slot-viewer::before { content: '▼'; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); color: var(--primary); font-size: 16px; text-shadow: 0 -1px 2px rgba(0,0,0,0.1); }
+        .slot-viewer-title { font-size: 12px; font-weight: 900; color: var(--primary); margin-bottom: 10px; border-bottom: 1px dashed var(--border); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+        .slot-viewer-close { cursor: pointer; background: #f1f5f9; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--danger); font-size: 10px; font-weight: bold; transition: 0.2s; }
+
+        /* =========================================
+           MOBILE SPECIFIC (BOTTOM NAV)
+           ========================================= */
+        .bottom-nav { display: none; }
+        @media (max-width: 768px) {
+            .app-container { padding: 0; background: var(--bg-color); }
+            .header { border-radius: 0; margin-bottom: 6px; box-shadow: none; border: none; padding: 10px 12px; }
+            .nav-tabs { display: none; } 
+            .main-content { padding: 0 0 80px 0; } 
+            .breadcrumb { border-radius: 0; border-left: none; border-right: none; margin-bottom: 6px; }
+            .search-box { padding: 0 10px; margin-bottom: 10px; }
+            .card { border-radius: 0; border-left: none; border-right: none; margin-bottom: 6px; box-shadow: none; border-bottom: 1px solid var(--border); border-top: 1px solid var(--border); padding: 14px 12px; }
+            .result-list { gap: 6px; padding: 0 6px; }
+            .slot-viewer { border-radius: 0; border-left: none; border-right: none; border-width: 2px 0 2px 0; }
+            
+            .bottom-nav { display: flex; position: fixed; bottom: 0; left: 0; width: 100%; background: #ffffff; backdrop-filter: blur(10px); box-shadow: 0 -4px 15px rgba(0,0,0,0.06); z-index: 4000; padding: 6px 4px 12px 4px; justify-content: space-between; border-top: 1px solid #e2e8f0; align-items: center; }
+            .nav-item { background: transparent; border: none; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 18px; color: var(--text-muted); cursor: pointer; transition: 0.2s; position: relative; }
+            .nav-item span { font-size: 9px; font-weight: 900; color: #64748b; margin-top: 2px; }
+            .nav-item.active { transform: translateY(-2px); }
+            .nav-item.active span { color: var(--primary); }
+            .nav-item.active::after { content: ''; position: absolute; bottom: -8px; width: 4px; height: 4px; background: var(--primary); border-radius: 50%; }
+            
+            .nav-search-wrapper { flex: 1.2; display: flex; justify-content: center; }
+            .nav-search-btn { background: linear-gradient(135deg, #4f46e5, #3730a3); width: 60px; height: 36px; border-radius: 50px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: white; box-shadow: 0 4px 12px rgba(67, 56, 202, 0.4); transform: translateY(-6px); border: 2px solid white; cursor: pointer; transition: 0.2s; }
+        }
+
+        /* =========================================
+           MODALS & TOAST
+           ========================================= */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); display: none; justify-content: center; align-items: flex-end; z-index: 5000; padding: 0; backdrop-filter: blur(4px); opacity: 0; transition: 0.2s; }
+        @media (min-width: 768px) { .modal-overlay { align-items: center; padding: 12px; } }
+        
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal-card { background: white; width: 100%; max-width: 400px; border-radius: 20px 20px 0 0; padding: 20px 14px 24px 14px; box-shadow: 0 -10px 30px rgba(0,0,0,0.2); max-height: 90vh; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1); }
+        @media (min-width: 768px) { .modal-card { border-radius: var(--radius-card); transform: scale(0.95); box-shadow: 0 16px 40px rgba(0,0,0,0.3); } }
+        
+        .modal-overlay.active .modal-card { transform: translateY(0) scale(1); }
+        
+        .modal-title { font-size: 14px; font-weight: 900; margin-bottom: 12px; color: var(--text-main); border-bottom: 2px solid var(--bg-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-close { cursor: pointer; color: var(--text-muted); background: var(--bg-color); width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: 0.2s; font-weight: bold; }
+        
+        .modal-body { flex: 1; overflow-y: auto; padding-right: 4px; }
+        
+        /* Action Sheet specific buttons */
+        .action-btn { width: 100%; padding: 12px; text-align: left; background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.2s; }
+        .action-btn:hover { background: var(--bg-color); border-color: var(--primary); }
+        .action-btn.del { color: var(--danger); border-color: #fecaca; background: #fef2f2; }
+        .action-btn.del:hover { background: #fee2e2; }
+
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-20px); background: #0f172a; color: white; padding: 10px 18px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 800; opacity: 0; transition: 0.3s; z-index: 6000; pointer-events: none; box-shadow: 0 8px 16px rgba(0,0,0,0.2); border: 2px solid #334155; display: flex; align-items: center; gap: 8px; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 6px; box-shadow: var(--shadow-sm); transition: 0.2s; }
+        .list-info { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+        .list-title { font-size: 12px; font-weight: 800; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px;}
+        .list-subtitle { font-size: 9px; color: var(--text-muted); font-weight: 800; margin-top: 2px; }
+        
+        /* Disable text selection during long press */
+        .no-select { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header class="header">
+        <div class="logo">
+            <span style="font-size: 18px;">📦</span> स्मार्ट इन्वेंट्री प्रो
+        </div>
+        <nav class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('home')">🏠 होम</button>
+            <button class="tab-btn" onclick="switchTab('all')">📦 सभी आइटम</button>
+            <button class="tab-btn" onclick="switchTab('add')">➕ जोड़ें</button>
+            <button class="tab-btn" onclick="switchTab('manage')">🛠️ मैनेज</button>
+            <button class="tab-btn" onclick="switchTab('settings')">⚙️ सेटअप</button>
+        </nav>
+    </header>
+
+    <div class="main-content">
+        <!-- ==================== 1. HOME ==================== -->
+        <section id="home-sec" class="section active">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="searchInput" placeholder="प्रोडक्ट का नाम, कोड या जगह खोजें..." oninput="handleSearch()">
+            </div>
+            
+            <div id="searchResults" class="result-list" style="display:none;"></div>
+
+            <div id="dashboardUI">
+                <div class="breadcrumb" id="breadcrumbNav"></div>
+                <div id="folderView" class="folder-grid"></div>
+                
+                <div id="visualizerView" class="visualizer-card" style="display: none;">
+                    <div class="wall-info-badge">👇 ऊपर से नीचे स्लॉट ━━━ दायें से बाएं रैक 👉</div>
+                    <div class="wall-wrapper">
+                        <div class="slot-grid" id="wallGrid"></div>
+                    </div>
+                </div>
+
+                <div class="slot-viewer" id="slotViewer">
+                    <div class="slot-viewer-title">
+                        <span id="slotViewerTitle">📍 स्लॉट विवरण</span>
+                        <span class="slot-viewer-close" onclick="closeSlotViewer()">✕</span>
+                    </div>
+                    <div id="slotProductsList" class="result-list" style="grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));"></div>
+                    <div id="quickAddContainer" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border);"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== 2. ALL PRODUCTS ==================== -->
+        <section id="all-sec" class="section">
+            <div class="card">
+                <div class="card-header">सभी इन्वेंट्री आइटम</div>
+                <div class="search-box" style="margin-bottom: 0;">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="search-input" id="searchAllInput" placeholder="नाम या कोड से खोजें..." oninput="handleAllSearch()">
+                </div>
+            </div>
+            <div id="allProductsList" class="result-list"></div>
+        </section>
+
+        <!-- ==================== 3. ADD PRODUCT ==================== -->
+        <section id="add-sec" class="section">
+            <div class="card">
+                <div class="card-header">नया प्रोडक्ट जोड़ें</div>
+                
+                <div class="form-group" style="margin-bottom: 10px; z-index: 10;">
+                    <label>प्रोडक्ट का नाम (ऑटो-सर्च) <span style="color:red">*</span></label>
+                    <input type="text" id="prodName" class="form-control" placeholder="नाम टाइप करें..." oninput="searchMasterData(this.value)" autocomplete="off">
+                    <div id="autocompleteList" class="autocomplete-list"></div>
+                </div>
+                
+                <div class="row-inputs">
+                    <div class="form-group"><label>कोड [CODE]</label><input type="text" id="prodCode" class="form-control" placeholder="--"></div>
+                    <div class="form-group"><label>यूनिट (Unit)</label><input type="text" id="prodUnit" class="form-control" placeholder="--"></div>
+                </div>
+                <div class="row-inputs">
+                    <div class="form-group"><label>रेट (Rate)</label><input type="number" id="prodRate" class="form-control" placeholder="0"></div>
+                    <div class="form-group"><label>लेवल (Level)</label><input type="text" id="prodLevel" class="form-control" placeholder="--"></div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>अतिरिक्त नोट्स (ऑप्शनल)</label>
+                    <textarea id="prodNote" class="form-control" placeholder="एक्सपायरी डेट, मात्रा..."></textarea>
+                </div>
+                
+                <div class="card-header" style="font-size: 11px; color: var(--text-muted); margin-bottom: 10px; border:none; padding:0;">📍 जगह चुनें (Location)</div>
+                <div class="row-inputs">
+                    <div class="form-group"><label>रूम (कमरा) <span style="color:red">*</span></label><select id="prodRoom" class="form-control" onchange="loadWallsForSelect('prodRoom', 'prodWall', 'prodRow', 'prodCol')"></select></div>
+                    <div class="form-group"><label>दीवार / शेल्फ <span style="color:red">*</span></label><select id="prodWall" class="form-control" onchange="loadGridForSelect('prodRoom', 'prodWall', 'prodRow', 'prodCol')"></select></div>
+                </div>
+                <div class="row-inputs" style="margin-bottom:14px;">
+                    <div class="form-group"><label>रैक (कॉलम) <span style="color:red">*</span></label><select id="prodRow" class="form-control"></select></div>
+                    <div class="form-group"><label>स्लॉट (ऊपर से नीचे) <span style="color:red">*</span></label><select id="prodCol" class="form-control"></select></div>
+                </div>
+                <button class="btn btn-primary w-full" style="height: 38px; font-size: 13px;" onclick="addProductProcess()">✓ प्रोडक्ट सेव करें</button>
+            </div>
+        </section>
+
+        <!-- ==================== 4. MANAGE LOCATIONS ==================== -->
+        <section id="manage-sec" class="section">
+            <div class="card">
+                <div class="card-header">लोकेशन मैनेज करें (Edit/Delete)</div>
+                <div id="manageLocationsList"></div>
+            </div>
+        </section>
+
+        <!-- ==================== 5. SETTINGS / SETUP ==================== -->
+        <section id="settings-sec" class="section">
+            <div class="grid-layout">
+               <!-- Master Data is now loaded automatically from data.js -->
+
+                <div class="card">
+                    <div class="card-header">🏢 नया रूम (कमरा) बनाएं</div>
+                    <div class="row-inputs" style="margin-bottom:0; align-items: flex-end;">
+                        <div class="form-group" style="margin-bottom:0;"><input type="text" id="roomName" class="form-control" placeholder="उदा. स्टोर रूम 1"></div>
+                        <button class="btn btn-outline" style="width:auto;" onclick="addRoom()">जोड़ें</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">🧱 नई दीवार / शेल्फ बनाएं</div>
+                    <div class="form-group" style="margin-bottom: 10px;"><label>रूम चुनें</label><select id="setRoomSelect" class="form-control"></select></div>
+                    <div class="form-group" style="margin-bottom: 10px;"><label>दीवार का नाम</label><input type="text" id="wallName" class="form-control" placeholder="उदा. बायीं दीवार"></div>
+                    <div class="row-inputs" style="margin-bottom:10px;">
+                        <div class="form-group"><label>कुल रैक (Columns)</label><input type="number" id="gridRows" class="form-control" placeholder="उदा. 5"></div>
+                        <div class="form-group"><label>प्रति रैक स्लॉट (Rows)</label><input type="number" id="gridCols" class="form-control" placeholder="उदा. 4"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label>रैक नंबरिंग की दिशा</label>
+                        <select id="gridDir" class="form-control">
+                            <option value="ltr">बाएं से दाएं</option>
+                            <option value="rtl">दाएं से बाएं</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary w-full" onclick="addWall()">सेव करें</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">💾 सिस्टम डेटा बैकअप (Backup)</div>
+                    <div class="row-inputs" style="margin-bottom:0;">
+                        <button class="btn btn-outline form-group" style="margin-bottom:0;" onclick="exportData()">📤 एक्सपोर्ट (Export)</button>
+                        <input type="file" id="importFile" style="display:none;" accept=".json" onchange="importData(event)">
+                        <button class="btn btn-outline form-group" style="margin-bottom:0;" onclick="document.getElementById('importFile').click()">📥 इम्पोर्ट (Import)</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- ==================== MOBILE BOTTOM NAV ==================== -->
+<nav class="bottom-nav">
+    <button class="nav-item active" onclick="switchTab('home')">🏠<span>होम</span></button>
+    <button class="nav-item" onclick="switchTab('all')">📦<span>सभी</span></button>
+    <div class="nav-search-wrapper"><div class="nav-search-btn" onclick="triggerSearchFocus()">🔍</div></div>
+    <button class="nav-item" onclick="switchTab('add')">➕<span>जोड़ें</span></button>
+    <button class="nav-item" onclick="switchTab('settings')">⚙️<span>सेटअप</span></button>
+</nav>
+
+<!-- ==================== LONG PRESS ACTION SHEET MODAL ==================== -->
+<div class="modal-overlay" id="actionModal">
+    <div class="modal-card" style="max-width: 350px;">
+        <div class="modal-title" style="border:none;">
+            <span id="actionTitle">⚙️ एक्शन चुनें</span>
+            <div class="modal-close" onclick="closeActionModal()">✕</div>
+        </div>
+        <div class="modal-body" id="actionBody">
+            <!-- Buttons will be injected here -->
+        </div>
+    </div>
+</div>
+
+<!-- ==================== FORM / EDIT MODAL ==================== -->
+<div class="modal-overlay" id="globalModal">
+    <div class="modal-card">
+        <div class="modal-title">
+            <span id="modalTitle">Modal Title</span>
+            <div class="modal-close" onclick="closeModal()">✕</div>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+        <div class="row-inputs" style="margin-top: 14px; margin-bottom: 0;">
+            <button class="btn btn-outline form-group" style="margin-bottom:0;" onclick="closeModal()">रद्द करें</button>
+            <button class="btn btn-primary form-group" style="margin-bottom:0;" id="modalSaveBtn">सेव करें</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast"><span style="font-size: 14px;" id="toastIcon">✅</span> <span id="toastMsg">सफलतापूर्वक सेव हुआ!</span></div>
+
+<!-- 1. पहले बाहरी data.js फाइल को लिंक करें -->
+<script src="data.js"></script>
+
+<!-- 2. उसके बाद अपना मुख्य लॉजिक शुरू करें -->
+<script>
+    /* =========================================
+       DATA & CORE LOGIC
+       ========================================= */
+  let data = { rooms: {}, products: [] };
+    
+    // बाहरी data.js फाइल में मौजूद jsonData को मास्टर डेटा बना रहे हैं
+    let masterProducts = typeof jsonData !== 'undefined' ? jsonData : []; 
+    
+    let currentViewLevel = 'rooms'; 
+    let activeRoom = null, activeWall = null;
+
+    // Long Press Variables
+    let pressTimer;
+    let isLongPressing = false;
+    let selectedProductId = null;
+
+    function loadData() {
+        const saved = localStorage.getItem('smartInvDataPro'); 
+        if (saved) { try { data = JSON.parse(saved); } catch(e) {} } 
+        
+        refreshAllViews();
+        renderHomeDashboard();
+    }
+
+    function saveData() { localStorage.setItem('smartInvDataPro', JSON.stringify(data)); refreshAllViews(); }
+    
+    function refreshAllViews() {
+        updateDropdowns(); renderManageList();
+        if(document.getElementById('all-sec').classList.contains('active')) renderAllProducts();
+    }
+
+    function showToast(msg, type='success') {
+        const t = document.getElementById('toast');
+        document.getElementById('toastMsg').innerText = msg;
+        document.getElementById('toastIcon').innerText = type === 'error' ? '⚠️' : '✅';
+        t.style.borderColor = type === 'error' ? 'var(--danger)' : 'var(--success)';
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll(`.tab-btn[onclick*="${tabId}"]`).forEach(btn => btn.classList.add('active'));
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        if(tabId !== 'searchFocus') document.querySelectorAll(`.nav-item[onclick*="${tabId}"]`).forEach(btn => btn.classList.add('active'));
+        
+        document.getElementById(tabId + '-sec').classList.add('active');
+        if(tabId === 'home') { 
+            document.getElementById('searchInput').value = ''; document.getElementById('searchResults').style.display = 'none';
+            document.getElementById('dashboardUI').style.display = 'block'; closeSlotViewer(); renderHomeDashboard(); window.scrollTo(0,0);
+        }
+        if(tabId === 'all') { document.getElementById('searchAllInput').value = ''; renderAllProducts(); window.scrollTo(0,0); }
+    }
+
+    function triggerSearchFocus() { switchTab('home'); document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active')); setTimeout(() => { const s = document.getElementById('searchInput'); s.focus(); s.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100); }
+
+    /* =========================================
+       MASTER JSON LOADER & AUTOCOMPLETE
+       ========================================= */
+    function loadMasterJSON(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const json = JSON.parse(evt.target.result);
+                if(Array.isArray(json)) {
+                    masterProducts = json;
+                    localStorage.setItem('smartInvMasterData', JSON.stringify(masterProducts));
+                    showToast(`✓ ${masterProducts.length} प्रोडक्ट्स मास्टर डेटा में लोड हो गए!`);
+                    updateMasterStatus();
+                } else { showToast("⚠️ JSON फाइल सही फॉर्मेट (Array) में नहीं है!", "error"); }
+            } catch (err) { showToast("⚠️ फाइल पढ़ने में समस्या! सही JSON अपलोड करें।", "error"); }
+            e.target.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    function updateMasterStatus() {
+        const el = document.getElementById('masterStatus');
+        if(masterProducts.length > 0) el.innerText = `✅ सिस्टम में ${masterProducts.length} आइटम्स का मास्टर डेटा मौजूद है।`;
+        else el.innerText = `❌ अभी कोई मास्टर डेटा लोड नहीं है।`;
+    }
+
+   function searchMasterData(query) {
+        const list = document.getElementById('autocompleteList');
+        
+        // 🛠️ FIX: सीधा data.js से डेटा पढ़ें (ताकि लोडिंग में कोई देरी न हो)
+        const dataSource = typeof jsonData !== 'undefined' ? jsonData : [];
+        
+        // मैंने < 2 को < 1 कर दिया है, ताकि 1 अक्षर लिखते ही लिस्ट आ जाए
+        if(!query || query.length < 1 || dataSource.length === 0) { 
+            list.style.display = 'none'; 
+            return; 
+        }
+        
+        const q = query.toLowerCase();
+        const matches = dataSource.filter(item => (item["DRUG NAME"] && item["DRUG NAME"].toLowerCase().includes(q)));
+        
+        if(matches.length === 0) { 
+            list.style.display = 'none'; 
+            return; 
+        }
+        
+        list.innerHTML = matches.slice(0, 20).map((item) => {
+            let rawName = item["DRUG NAME"];
+            let namePart = rawName;
+            let codePart = "";
+            
+            let matchReg = rawName.match(/(.*)\[(.*?)\]\s*$/);
+            if(matchReg) { namePart = matchReg[1].trim(); codePart = matchReg[2].trim(); }
+            
+            const safeItem = JSON.stringify(item).replace(/"/g, '&quot;');
+            
+            return `
+                <div class="autocomplete-item" onclick="selectMasterItem(${safeItem})">
+                    <span class="ac-title">${namePart}</span>
+                    ${codePart ? `<span class="ac-code">[${codePart}]</span>` : ''}
+                </div>`;
+        }).join('');
+        
+        list.style.display = 'block';
+    }
+
+    function selectMasterItem(item) {
+        let rawName = item["DRUG NAME"] || "";
+        let namePart = rawName;
+        let codePart = "";
+        
+        // Extract Code from bracket [CODE] at the end
+        let matchReg = rawName.match(/(.*)\[(.*?)\]\s*$/);
+        if(matchReg) { namePart = matchReg[1].trim(); codePart = matchReg[2].trim(); }
+
+        document.getElementById('prodName').value = namePart;
+        document.getElementById('prodCode').value = codePart;
+        document.getElementById('prodUnit').value = item["UNIT"] || "";
+        document.getElementById('prodRate').value = item["RATE"] || "";
+        document.getElementById('prodLevel').value = item["LEVEL"] || "";
+        
+        document.getElementById('autocompleteList').style.display = 'none';
+    }
+
+    // Hide autocomplete on click outside
+    document.addEventListener('click', function(e) {
+        if(e.target.id !== 'prodName') document.getElementById('autocompleteList').style.display = 'none';
+    });
+
+
+    /* =========================================
+       FOLDER HIERARCHY
+       ========================================= */
+    function goRooms() { currentViewLevel = 'rooms'; activeRoom = null; activeWall = null; closeSlotViewer(); renderHomeDashboard(); }
+    function goWalls(room) { currentViewLevel = 'walls'; activeRoom = room; activeWall = null; closeSlotViewer(); renderHomeDashboard(); }
+    function goGrid(wall) { currentViewLevel = 'grid'; activeWall = wall; closeSlotViewer(); renderHomeDashboard(); }
+
+    function renderBreadcrumbs() {
+        const nav = document.getElementById('breadcrumbNav');
+        let html = `<span onclick="goRooms()">🏠 होम</span>`;
+        if (activeRoom) html += ` ❯ <span onclick="goWalls('${activeRoom}')">🏢 ${activeRoom}</span>`;
+        if (activeWall) html += ` ❯ <span class="active">🧱 ${activeWall}</span>`;
+        nav.innerHTML = html;
+    }
+
+    function renderHomeDashboard() {
+        renderBreadcrumbs();
+        const fView = document.getElementById('folderView'); const vView = document.getElementById('visualizerView');
+        
+        if (currentViewLevel === 'rooms') {
+            vView.style.display = 'none'; fView.style.display = 'grid'; fView.innerHTML = '';
+            const rooms = Object.keys(data.rooms);
+            if(rooms.length === 0) { fView.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 20px; color:var(--text-muted); font-weight:800;">कोई रूम नहीं है। कृपया 'सेटअप' में जाकर बनाएं।</div>`; return; }
+            rooms.forEach(r => {
+                const wc = Object.keys(data.rooms[r]).length; const ic = data.products.filter(p => p.room === r).length;
+                fView.innerHTML += `<div class="folder-card" onclick="goWalls('${r}')"><div class="folder-icon">🏢</div><div class="folder-name">${r}</div><div class="folder-stats">${wc} दीवारें • ${ic} आइटम</div></div>`;
+            });
+        } 
+        else if (currentViewLevel === 'walls') {
+            vView.style.display = 'none'; fView.style.display = 'grid'; fView.innerHTML = '';
+            const walls = Object.keys(data.rooms[activeRoom]);
+            if(walls.length === 0) { fView.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 20px; color:var(--text-muted); font-weight:800;">इस रूम में कोई दीवार/शेल्फ नहीं है।</div>`; return; }
+            walls.forEach(w => {
+                const ic = data.products.filter(p => p.room === activeRoom && p.wall === w).length;
+                fView.innerHTML += `<div class="folder-card" onclick="goGrid('${w}')"><div class="folder-icon">🧱</div><div class="folder-name">${w}</div><div class="folder-stats">${ic} आइटम अंदर हैं</div></div>`;
+            });
+        }
+        else if (currentViewLevel === 'grid') { fView.style.display = 'none'; renderGrid(); }
+    }
+
+    function renderGrid() {
+        const gridInfo = data.rooms[activeRoom][activeWall]; if(!gridInfo) return;
+        const gridBox = document.getElementById('wallGrid');
+        const tr = parseInt(gridInfo.rows); const ts = parseInt(gridInfo.cols);
+        gridBox.style.gridTemplateColumns = `repeat(${tr}, 1fr)`;
+        gridBox.style.direction = gridInfo.dir === 'rtl' ? 'rtl' : 'ltr';
+        gridBox.innerHTML = '';
+
+        const items = data.products.filter(p => p.room === activeRoom && p.wall === activeWall);
+        
+        for(let s = 0; s <= ts; s++) {
+            for(let r = 1; r <= tr; r++) {
+                const slot = document.createElement('div'); slot.className = 'slot'; slot.id = `slot-${r}-${s}`;
+                const inSlot = items.filter(p => p.row == r && p.col == s);
+                let bgContent = '';
+                
+                if(inSlot.length > 0) {
+                    slot.classList.add('has-items');
+                    let innerHTML = ''; let dInitials = new Set();
+                    inSlot.forEach(p => {
+                        const fc = (p.name || '?').trim().charAt(0).toUpperCase();
+                        if(!dInitials.has(fc)) { dInitials.add(fc); innerHTML += `<div class="slot-text-mini">${fc}</div>`; }
+                    });
+                    if(inSlot.length > 4) innerHTML += `<div class="slot-text-mini" style="background:var(--text-main); font-size:8px;">+${inSlot.length - 4}</div>`;
+                    bgContent = `<div class="slot-imgs-container">${innerHTML}</div>`;
+                }
+                
+                slot.innerHTML = `<div class="slot-label">R:${r}/S:${s}</div>${bgContent}`; slot.style.direction = 'ltr'; 
+                slot.onclick = (e) => { e.stopPropagation(); viewSlotContents(r, s, slot, false); };
+                gridBox.appendChild(slot);
+            }
+        }
+        document.getElementById('visualizerView').style.display = 'block';
+    }
+
+    function viewSlotContents(r, s, slotElement, isSearchHighlight = false) {
+        document.querySelectorAll('.slot').forEach(el => el.classList.remove('selected', 'search-blink'));
+        if(!slotElement) slotElement = document.getElementById(`slot-${r}-${s}`);
+        if(slotElement) {
+            slotElement.classList.add('selected');
+            if(isSearchHighlight) { slotElement.classList.add('search-blink'); slotElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); }
+        }
+        const viewer = document.getElementById('slotViewer');
+        document.getElementById('slotViewerTitle').innerHTML = `📍 रैक ${r}, स्लॉट ${s} के आइटम्स`;
+        const items = data.products.filter(p => p.room === activeRoom && p.wall === activeWall && p.row == r && p.col == s);
+        const list = document.getElementById('slotProductsList');
+        if(items.length === 0) list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted); font-weight:800; grid-column:1/-1;">यह बॉक्स खाली है।</div>';
+        else list.innerHTML = items.map(p => renderProductCard(p)).join('');
+
+        document.getElementById('quickAddContainer').innerHTML = `<button class="btn w-full" style="background:var(--primary-light); color:var(--primary); font-size:11px;" onclick="quickAddProduct('${activeRoom.replace(/'/g, "\\'")}', '${activeWall.replace(/'/g, "\\'")}', ${r}, ${s})">➕ इस स्लॉट में नया आइटम जोड़ें</button>`;
+        viewer.style.display = 'block';
+        if(!isSearchHighlight) setTimeout(() => { viewer.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
+    }
+    
+    function closeSlotViewer() { document.getElementById('slotViewer').style.display = 'none'; document.querySelectorAll('.slot').forEach(el => el.classList.remove('selected', 'search-blink')); }
+
+    /* =========================================
+       SEARCH & RENDER CARDS
+       ========================================= */
+    function handleSearch() {
+        const q = document.getElementById('searchInput').value.toLowerCase().trim();
+        const resBox = document.getElementById('searchResults'); const dashboardUI = document.getElementById('dashboardUI');
+        if(!q) { resBox.style.display = 'none'; dashboardUI.style.display = 'block'; return; }
+        dashboardUI.style.display = 'none'; resBox.style.display = 'grid';
+        
+        const matches = data.products.filter(p => p.name.toLowerCase().includes(q) || (p.code && p.code.toLowerCase().includes(q)) || p.room.toLowerCase().includes(q) || p.wall.toLowerCase().includes(q) || (p.note && p.note.toLowerCase().includes(q)));
+        
+        if(matches.length === 0) { resBox.innerHTML = '<div class="result-card" style="text-align:center; padding:20px; grid-column:1/-1; font-weight:800;">कोई आइटम नहीं मिला।</div>'; return; }
+        resBox.innerHTML = matches.map(p => renderProductCard(p)).join('');
+    }
+
+    function handleAllSearch() {
+        const q = document.getElementById('searchAllInput').value.toLowerCase().trim();
+        const box = document.getElementById('allProductsList');
+        let list = data.products;
+        if(q) list = data.products.filter(p => p.name.toLowerCase().includes(q) || (p.code && p.code.toLowerCase().includes(q)) || p.room.toLowerCase().includes(q));
+        if(list.length === 0) { box.innerHTML = '<div class="result-card" style="text-align:center; grid-column:1/-1; font-weight:800; padding:20px;">कोई आइटम नहीं मिला।</div>'; return; }
+        box.innerHTML = list.map(p => renderProductCard(p)).join('');
+    }
+    function renderAllProducts() { handleAllSearch(); }
+
+    /* LONG PRESS LOGIC ON CARD */
+    function attachLongPress() {
+        return `onmousedown="startPress(event, this)" onmouseup="cancelPress(event, this)" onmouseleave="cancelPress(event, this)" ontouchstart="startPress(event, this)" ontouchend="cancelPress(event, this)" ontouchmove="cancelPress(event, this)"`;
+    }
+
+    function startPress(e, el) {
+        if(e.type === 'mousedown' && e.button !== 0) return; // Only left click
+        isLongPressing = false;
+        const pid = el.getAttribute('data-id');
+        el.classList.add('no-select'); // Prevent text selection
+        
+        pressTimer = setTimeout(() => {
+            isLongPressing = true;
+            if(navigator.vibrate) navigator.vibrate(50); // Small haptic feedback if supported
+            openActionModal(pid);
+        }, 700); // 700ms long press
+    }
+
+    function cancelPress(e, el) {
+        clearTimeout(pressTimer);
+        el.classList.remove('no-select');
+    }
+
+    function onCardClick(e, pid) {
+        if(isLongPressing) {
+            e.preventDefault(); e.stopPropagation();
+            isLongPressing = false;
+            return;
+        }
+        // If normal click, jump to location
+        jumpToLocation(pid);
+    }
+
+function renderProductCard(p) {
+        // नाम का पहला अक्षर (First Text) निकालने का लॉजिक वापस जोड़ दिया गया है
+        const firstChar = (p.name || '?').charAt(0).toUpperCase();
+        
+        let metaHtml = '';
+        if(p.code || p.unit || p.rate || p.level) {
+            metaHtml = `<div class="product-meta">`;
+            if(p.code) metaHtml += `<div class="meta-item" style="color:var(--primary);">🔢 <strong>[${p.code}]</strong></div>`;
+            if(p.rate) metaHtml += `<div class="meta-item">💰 <strong>₹${p.rate}</strong></div>`;
+            if(p.unit) metaHtml += `<div class="meta-item">📦 <strong>${p.unit}</strong></div>`;
+            if(p.level) metaHtml += `<div class="meta-item">🏷️ <strong>${p.level}</strong></div>`;
+            metaHtml += `</div>`;
+        }
+
+        return `
+            <div class="result-card" data-id="${p.id}" ${attachLongPress()} onclick="onCardClick(event, '${p.id}')">
+                <div class="r-header-wrap" style="align-items: center;">
+                    
+                    <!-- पहला अक्षर (Avatar) का डिब्बा यहाँ वापस लगा दिया गया है -->
+                    <div class="r-thumb">${firstChar}</div>
+                    
+                    <div class="r-details" style="gap: 4px;">
+                        <div class="r-name" style="font-size: 13px; margin-bottom: 2px;">${p.name}</div>
+                        <div class="badge-container">
+                            <span class="badge-pill">🏢 ${p.room} ❯ 🧱 ${p.wall}</span>
+                            <span class="badge-pill" style="background:#fef3c7; color:#d97706;">R:${p.row}</span>
+                            <span class="badge-pill" style="background:#e0e7ff; color:var(--primary);">S:${p.col}</span>
+                        </div>
+                    </div>
+                </div>
+                ${metaHtml}
+                ${p.note ? `<div class="r-note">📝 ${p.note}</div>` : ''}
+            </div>`;
+    }
+    function jumpToLocation(pid) {
+        closeSlotViewer(); switchTab('home');
+        document.getElementById('searchInput').value = ''; document.getElementById('searchResults').style.display = 'none'; 
+        document.getElementById('dashboardUI').style.display = 'block'; 
+
+        const p = data.products.find(x => x.id === pid); if(!p) return;
+        activeRoom = p.room; activeWall = p.wall; currentViewLevel = 'grid';
+        renderHomeDashboard();
+        setTimeout(() => viewSlotContents(p.row, p.col, null, true), 300);
+    }
+
+    /* =========================================
+       ACTION SHEET (LONG PRESS)
+       ========================================= */
+    function openActionModal(pid) {
+        selectedProductId = pid;
+        const p = data.products.find(x => x.id === pid);
+        if(!p) return;
+
+        document.getElementById('actionTitle').innerHTML = `⚙️ ऑप्शंस <span style="font-size:10px; font-weight:normal;">(${p.name.substring(0,15)}...)</span>`;
+        
+        const html = `
+            <button class="action-btn" onclick="openMoveModal('${pid}')">🚚 दूसरी जगह भेजें (Move)</button>
+            <button class="action-btn" onclick="openEditProductModal('${pid}')">✏️ जानकारी बदलें (Edit)</button>
+            <button class="action-btn del" onclick="deleteProduct('${pid}')">🗑️ आइटम डिलीट करें (Delete)</button>
+        `;
+        document.getElementById('actionBody').innerHTML = html;
+        document.getElementById('actionModal').classList.add('active');
+    }
+
+    function closeActionModal() {
+        document.getElementById('actionModal').classList.remove('active');
+        selectedProductId = null;
+    }
+
+    /* =========================================
+       DROPDOWNS & PRODUCT LOGIC
+       ========================================= */
+    function updateDropdowns() {
+        let opts = '<option value="">-- रूम चुनें --</option>';
+        for(let r in data.rooms) opts += `<option value="${r}">${r}</option>`;
+        document.getElementById('setRoomSelect').innerHTML = opts; document.getElementById('prodRoom').innerHTML = opts;
+    }
+    
+    function loadWallsForSelect(rmId, wlId, rwId, clId) {
+        const rm = document.getElementById(rmId).value; const wl = document.getElementById(wlId); wl.innerHTML = '<option value="">-- दीवार --</option>';
+        if(document.getElementById(rwId)) document.getElementById(rwId).innerHTML = ''; if(document.getElementById(clId)) document.getElementById(clId).innerHTML = '';
+        if(rm && data.rooms[rm]) for(let w in data.rooms[rm]) wl.innerHTML += `<option value="${w}">${w}</option>`;
+    }
+    
+    function loadGridForSelect(rmId, wlId, rwId, clId) {
+        const rm = document.getElementById(rmId).value; const w = document.getElementById(wlId).value;
+        const rw = document.getElementById(rwId); const cl = document.getElementById(clId);
+        rw.innerHTML = '<option value="">-- रैक --</option>'; cl.innerHTML = '<option value="">-- स्लॉट --</option>';
+        if(rm && w && data.rooms[rm][w]) {
+            const g = data.rooms[rm][w];
+            for(let r=1; r<=g.rows; r++) rw.innerHTML += `<option value="${r}">रैक ${r}</option>`;
+            for(let c=0; c<=g.cols; c++) cl.innerHTML += `<option value="${c}">स्लॉट ${c}</option>`;
+        }
+    }
+
+    function addProductProcess() {
+        const name = document.getElementById('prodName').value.trim();
+        const code = document.getElementById('prodCode').value.trim();
+        const unit = document.getElementById('prodUnit').value.trim();
+        const rate = document.getElementById('prodRate').value.trim();
+        const level = document.getElementById('prodLevel').value.trim();
+        const note = document.getElementById('prodNote').value.trim();
+        const room = document.getElementById('prodRoom').value;
+        const wall = document.getElementById('prodWall').value;
+        const row = document.getElementById('prodRow').value;
+        const col = document.getElementById('prodCol').value;
+
+        if(!name || !room || !wall || !row || col === "") return showToast("⚠️ नाम और लोकेशन पूरी तरह भरें!", "error");
+
+        data.products.push({ id: Date.now().toString(), name, code, unit, rate, level, note, room, wall, row, col });
+        saveData();
+        
+        document.getElementById('prodName').value = ''; document.getElementById('prodCode').value = '';
+        document.getElementById('prodUnit').value = ''; document.getElementById('prodRate').value = '';
+        document.getElementById('prodLevel').value = ''; document.getElementById('prodNote').value = '';
+        showToast("✓ प्रोडक्ट सुरक्षित हो गया!");
+        jumpToLocation(data.products[data.products.length-1].id);
+    }
+
+    function quickAddProduct(room, wall, r, c) {
+        closeSlotViewer(); switchTab('add');
+        document.getElementById('prodRoom').value = room; loadWallsForSelect('prodRoom', 'prodWall', 'prodRow', 'prodCol');
+        document.getElementById('prodWall').value = wall; loadGridForSelect('prodRoom', 'prodWall', 'prodRow', 'prodCol');
+        setTimeout(() => { document.getElementById('prodRow').value = r; document.getElementById('prodCol').value = c; document.getElementById('prodName').focus(); }, 100);
+    }
+
+    function deleteProduct(pid) {
+        if(!confirm("क्या आप वाकई इस आइटम को डिलीट करना चाहते हैं?")) return;
+        data.products = data.products.filter(p => p.id !== pid);
+        saveData(); closeActionModal(); showToast("✓ आइटम डिलीट हो गया");
+        if(document.getElementById('slotViewer').style.display === 'block') closeSlotViewer();
+        if(document.getElementById('home-sec').classList.contains('active')) {
+            if(document.getElementById('searchInput').value) handleSearch(); else if (currentViewLevel === 'grid') renderGrid();
+        } else { renderAllProducts(); }
+    }
+
+    function openMoveModal(pid) {
+        closeActionModal();
+        const p = data.products.find(x => x.id === pid); if(!p) return;
+        let html = `
+            <div style="font-size:12px; margin-bottom:12px; color:var(--text-main); background:var(--bg-color); padding:8px 12px; border-radius:var(--radius-pill); font-weight:900; text-align:center;">📦 ${p.name}</div>
+            <div class="form-group" style="margin-bottom:10px;"><label>नया रूम</label><select id="mvRoom" class="form-control" onchange="loadWallsForSelect('mvRoom','mvWall','mvRow','mvCol')"></select></div>
+            <div class="form-group" style="margin-bottom:10px;"><label>नई दीवार</label><select id="mvWall" class="form-control" onchange="loadGridForSelect('mvRoom','mvWall','mvRow','mvCol')"></select></div>
+            <div class="row-inputs">
+                <div class="form-group"><label>रैक</label><select id="mvRow" class="form-control"></select></div>
+                <div class="form-group"><label>स्लॉट</label><select id="mvCol" class="form-control"></select></div>
+            </div>`;
+        openModal("🚚 प्रोडक्ट मूव करें", html, () => {
+            const nr = document.getElementById('mvRoom').value, nw = document.getElementById('mvWall').value, nrow = document.getElementById('mvRow').value, ncol = document.getElementById('mvCol').value;
+            if(!nr || !nw || !nrow || ncol === "") return showToast("⚠️ लोकेशन चुनें!", "error");
+            p.room = nr; p.wall = nw; p.row = nrow; p.col = ncol; saveData(); closeModal(); closeSlotViewer(); showToast("✓ मूव हो गया!");
+            if(document.getElementById('home-sec').classList.contains('active') && document.getElementById('searchInput').value) handleSearch();
+            else if (document.getElementById('all-sec').classList.contains('active')) renderAllProducts();
+            else if (currentViewLevel === 'grid') { renderGrid(); setTimeout(() => viewSlotContents(nrow, ncol, null), 300); }
+        });
+        let opts = '<option value="">-- चुनें --</option>'; for(let r in data.rooms) opts += `<option value="${r}" ${r===p.room?'selected':''}>${r}</option>`;
+        document.getElementById('mvRoom').innerHTML = opts; loadWallsForSelect('mvRoom','mvWall','mvRow','mvCol');
+        setTimeout(()=>{ document.getElementById('mvWall').value = p.wall; loadGridForSelect('mvRoom','mvWall','mvRow','mvCol'); setTimeout(()=>{ document.getElementById('mvRow').value = p.row; document.getElementById('mvCol').value = p.col; },50); },50);
+    }
+
+    function openEditProductModal(pid) {
+        closeActionModal();
+        const p = data.products.find(x => x.id === pid); if(!p) return;
+        let html = `
+            <div class="form-group" style="margin-bottom:10px;"><label>नाम</label><input type="text" id="epName" class="form-control" value="${p.name}"></div>
+            <div class="row-inputs">
+                <div class="form-group"><label>कोड</label><input type="text" id="epCode" class="form-control" value="${p.code || ''}"></div>
+                <div class="form-group"><label>यूनिट</label><input type="text" id="epUnit" class="form-control" value="${p.unit || ''}"></div>
+            </div>
+            <div class="row-inputs">
+                <div class="form-group"><label>रेट</label><input type="number" id="epRate" class="form-control" value="${p.rate || ''}"></div>
+                <div class="form-group"><label>लेवल</label><input type="text" id="epLevel" class="form-control" value="${p.level || ''}"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:12px;"><label>नोट्स</label><textarea id="epNote" class="form-control">${p.note || ''}</textarea></div>
+            <div class="row-inputs">
+                <div class="form-group"><label>रूम</label><select id="epRoom" class="form-control" onchange="loadWallsForSelect('epRoom','epWall','epRow','epCol')"></select></div>
+                <div class="form-group"><label>दीवार</label><select id="epWall" class="form-control" onchange="loadGridForSelect('epRoom','epWall','epRow','epCol')"></select></div>
+            </div>
+            <div class="row-inputs">
+                <div class="form-group"><label>रैक</label><select id="epRow" class="form-control"></select></div>
+                <div class="form-group"><label>स्लॉट</label><select id="epCol" class="form-control"></select></div>
+            </div>`;
+        openModal("✏️ प्रोडक्ट एडिट करें", html, () => {
+            const nName = document.getElementById('epName').value.trim();
+            const nr = document.getElementById('epRoom').value, nw = document.getElementById('epWall').value, nrow = document.getElementById('epRow').value, ncol = document.getElementById('epCol').value;
+            if(!nName || !nr || !nw || !nrow || ncol === "") return showToast("⚠️ अनिवार्य फील्ड भरें!", "error");
+            
+            p.name = nName; p.code = document.getElementById('epCode').value.trim(); p.unit = document.getElementById('epUnit').value.trim();
+            p.rate = document.getElementById('epRate').value.trim(); p.level = document.getElementById('epLevel').value.trim();
+            p.note = document.getElementById('epNote').value.trim(); p.room = nr; p.wall = nw; p.row = nrow; p.col = ncol;
+            
+            saveData(); closeModal(); closeSlotViewer(); showToast("✓ अपडेट हुआ!");
+            if (document.getElementById('all-sec').classList.contains('active')) renderAllProducts();
+            else jumpToLocation(pid);
+        });
+
+        let opts = '<option value="">-- चुनें --</option>'; for(let r in data.rooms) opts += `<option value="${r}" ${r===p.room?'selected':''}>${r}</option>`;
+        document.getElementById('epRoom').innerHTML = opts; loadWallsForSelect('epRoom','epWall','epRow','epCol');
+        setTimeout(()=>{ document.getElementById('epWall').value = p.wall; loadGridForSelect('epRoom','epWall','epRow','epCol'); setTimeout(()=>{ document.getElementById('epRow').value = p.row; document.getElementById('epCol').value = p.col; },50); },50);
+    }
+
+    /* =========================================
+       SETTINGS: MANAGE LOCATIONS
+       ========================================= */
+    function addRoom() {
+        const rn = document.getElementById('roomName').value.trim();
+        if(!rn) return showToast("⚠️ रूम का नाम लिखें", "error"); if(data.rooms[rn]) return showToast("⚠️ नाम पहले से है!", "error");
+        data.rooms[rn] = {}; saveData(); document.getElementById('roomName').value = ''; showToast("✓ रूम बन गया");
+    }
+
+    function addWall() {
+        const room = document.getElementById('setRoomSelect').value; const wall = document.getElementById('wallName').value.trim();
+        const rows = parseInt(document.getElementById('gridRows').value); const cols = parseInt(document.getElementById('gridCols').value);
+        const dir = document.getElementById('gridDir').value;
+        if(!room || !wall || isNaN(rows) || isNaN(cols)) return showToast("⚠️ जानकारी सही भरें!", "error");
+        if(data.rooms[room][wall]) return showToast("⚠️ यह दीवार पहले से है!", "error");
+        data.rooms[room][wall] = { rows, cols, dir }; saveData();
+        document.getElementById('wallName').value = ''; document.getElementById('gridRows').value = ''; document.getElementById('gridCols').value = ''; showToast("✓ दीवार बन गई");
+    }
+
+    function renderManageList() {
+        const box = document.getElementById('manageLocationsList'); let html = '';
+        for(let r in data.rooms) {
+            html += `<div class="list-item" style="border-left: 4px solid var(--primary);"><div class="list-info"><span class="list-title">🏢 ${r}</span></div><div style="display:flex;gap:4px;"><button class="btn btn-outline btn-small" onclick="openEditRoomModal('${r}')">✏️</button><button class="btn btn-danger btn-small" onclick="deleteRoom('${r}')">🗑️</button></div></div>`;
+            for(let w in data.rooms[r]) {
+                const grid = data.rooms[r][w];
+                html += `<div class="list-item" style="margin-left: 18px; border-left: 3px solid #94a3b8; background: var(--bg-color);"><div class="list-info"><span class="list-title">🧱 ${w}</span><span class="list-subtitle">रैक: ${grid.rows}, स्लॉट: ${grid.cols}</span></div><div style="display:flex;gap:4px;"><button class="btn btn-outline btn-small" onclick="openEditWallModal('${r}','${w}')">✏️</button><button class="btn btn-danger btn-small" onclick="deleteWall('${r}','${w}')">🗑️</button></div></div>`;
+            }
+        }
+        box.innerHTML = html || '<div style="text-align:center; padding: 20px; color:var(--text-muted); font-weight:800;">कोई लोकेशन नहीं है।</div>';
+    }
+
+    function deleteRoom(r) { if(!confirm(`क्या आप '${r}' को डिलीट करना चाहते हैं?`)) return; delete data.rooms[r]; data.products = data.products.filter(p => p.room !== r); saveData(); showToast("✓ डिलीट हो गया"); if(activeRoom === r) goRooms(); }
+    function deleteWall(r, w) { if(!confirm(`क्या आप दीवार '${w}' को डिलीट करना चाहते हैं?`)) return; delete data.rooms[r][w]; data.products = data.products.filter(p => !(p.room === r && p.wall === w)); saveData(); showToast("✓ डिलीट हो गई"); if(activeWall === w) goWalls(r); }
+
+    function openModal(title, bodyHtml, onSave) { document.getElementById('modalTitle').innerText = title; document.getElementById('modalBody').innerHTML = bodyHtml; document.getElementById('modalSaveBtn').onclick = onSave; document.getElementById('globalModal').classList.add('active'); }
+    function closeModal() { document.getElementById('globalModal').classList.remove('active'); }
+
+    function openEditRoomModal(oldName) {
+        openModal("✏️ रूम का नाम बदलें", `<div class="form-group"><label>रूम का नाम</label><input type="text" id="erInput" class="form-control" value="${oldName}"></div>`, () => {
+            const n = document.getElementById('erInput').value.trim(); if(!n || n === oldName) return closeModal();
+            if(data.rooms[n]) return showToast("⚠️ नाम पहले से है!", "error");
+            data.rooms[n] = data.rooms[oldName]; delete data.rooms[oldName]; data.products.forEach(p => { if(p.room === oldName) p.room = n; }); saveData(); closeModal(); showToast("✓ नाम बदल गया"); if(activeRoom === oldName) activeRoom = n;
+        });
+    }
+
+    function openEditWallModal(r, oldW) {
+        const grid = data.rooms[r][oldW];
+        let html = `<div class="form-group" style="margin-bottom:10px;"><label>दीवार का नाम</label><input type="text" id="ewName" class="form-control" value="${oldW}"></div><div class="row-inputs"><div class="form-group"><label>रैक (Columns)</label><input type="number" id="ewRow" class="form-control" value="${grid.rows}"></div><div class="form-group"><label>स्लॉट (Rows)</label><input type="number" id="ewCol" class="form-control" value="${grid.cols}"></div></div><div class="form-group" style="margin-top:10px;"><label>दिशा</label><select id="ewDir" class="form-control"><option value="ltr" ${grid.dir === 'ltr' ? 'selected' : ''}>बाएं से दाएं</option><option value="rtl" ${grid.dir === 'rtl' ? 'selected' : ''}>दाएं से बाएं</option></select></div>`;
+        openModal(`✏️ दीवार एडिट करें (${r})`, html, () => {
+            const nw = document.getElementById('ewName').value.trim(), nr = parseInt(document.getElementById('ewRow').value), nc = parseInt(document.getElementById('ewCol').value), nd = document.getElementById('ewDir').value;
+            if(!nw || isNaN(nr) || isNaN(nc)) return showToast("⚠️ अमान्य जानकारी", "error");
+            if(nw !== oldW && data.rooms[r][nw]) return showToast("⚠️ दीवार का नाम पहले से है!", "error");
+            if(nw !== oldW) { data.rooms[r][nw] = { rows: nr, cols: nc, dir: nd }; delete data.rooms[r][oldW]; data.products.forEach(p => { if(p.room === r && p.wall === oldW) p.wall = nw; }); } else { data.rooms[r][oldW] = { rows: nr, cols: nc, dir: nd }; }
+            saveData(); closeModal(); showToast("✓ अपडेट हुआ"); if(activeWall === oldW) activeWall = nw; if(currentViewLevel === 'grid') renderGrid();
+        });
+    }
+
+    function exportData() { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: "application/json" })); a.download = `inventory_elite_backup.json`; a.click(); showToast("✓ एक्सपोर्ट हो गया!"); }
+    function importData(e) { const f = e.target.files[0]; if(!f) return; const reader = new FileReader(); reader.onload = function(e) { try { const imp = JSON.parse(e.target.result); if(imp.rooms && imp.products) { data = imp; saveData(); showToast("✓ रिस्टोर हो गया!"); } else showToast("⚠️ गलत फाइल!", "error"); } catch (err) { showToast("⚠️ फाइल एरर!", "error"); } e.target.value = ''; }; reader.readAsText(f); }
+
+    window.onload = loadData;
+</script>
+<script>
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js');
+</script>
+</body>
+</html>
